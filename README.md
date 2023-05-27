@@ -4,6 +4,15 @@ A Go-based terminal to communicate with the Zolatron 6502 computer.
 
 This replaces the earlier zolaterm program.
 
+Usage:
+
+`zolaterm [-a] [-p] [-t] [-f ]`
+
+- -a append to log file. Otherwise, overwrite.
+- -f filename to use for log file. Very little error checking is done, so be careful.
+- -p port to use - eg, ttyACM0
+- -t test message to send using command '/t'
+
 The program works in two modes: CMD and RAW.
 
 ## CMD MODE
