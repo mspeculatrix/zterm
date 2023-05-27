@@ -42,7 +42,7 @@ const (
 	recvBufSize         = 1024 // recieve buffer size, in bytes
 	charDelay           = 10   // ms between characters
 	NULL           byte = 0    // NULL mode for return key
-	RAW            byte = 1    // Indicates RAW mode for return key
+	RTN            byte = 1    // Indicates RTN mode for return key
 	LINETERM       byte = 10   // ASCII char to use as line terminator
 	NEWLINE        byte = 10
 	CR             byte = 13
@@ -61,7 +61,7 @@ var (
 	fileMode   = os.O_CREATE | os.O_TRUNC | os.O_WRONLY
 	append     = false
 	imode      = "cmd" // or "raw" - input mode
-	returnMode = NULL  // or RAW - how <return> key is treated
+	returnMode = NULL  // or RTN - how <return> key is treated
 	// recvMsgs    = make(chan []byte, recvBufSize)
 	// logtexts    = make(chan []byte, recvBufSize)
 	logSession = true
@@ -196,7 +196,7 @@ func resetZolatron(rPin rpio.Pin) {
 }
 
 func returnModeStr() (modeStr string) {
-	modeStr = "RAW"
+	modeStr = "RTN"
 	if returnMode == NULL {
 		modeStr = "NULL"
 	}
@@ -205,7 +205,7 @@ func returnModeStr() (modeStr string) {
 
 func showFkeys() {
 	fmt.Println("   - F1  switch to CMD mode")
-	fmt.Println("   - F2  toggle NULL/RAW mode for <return> key")
+	fmt.Println("   - F2  toggle NULL/RTN mode for <return> key")
 	fmt.Println("   - F3  show status")
 	fmt.Println("   - F4  send NULL")
 	fmt.Println("   - F10 reset Z64")
@@ -328,20 +328,20 @@ func main() {
 				} else {
 					switch ichar[0] {
 					case CR: // Carriage return
-						// If raw mode, just send what was actually typed.
+						// If RTN mode, just send what was actually typed.
 						// Otherwise, send a NULL character.
 						fmt.Println("\r")
-						if returnMode == RAW {
-							// raw mode, so just send what was actually typed
+						if returnMode == RTN {
+							// RTN mode, so just send what was actually typed
 							serialPort.Write([]byte{ichar[0]})
 						} else {
 							// NULL mode - send NULL character
 							serialPort.Write([]byte{NULL})
 						}
 					case NEWLINE: // Linefeed
-						// If raw mode, just send what was actually typed.
+						// If RTN mode, just send what was actually typed.
 						// Otherwise, ignore.
-						if returnMode == RAW {
+						if returnMode == RTN {
 							serialPort.Write([]byte{ichar[0]})
 						}
 					case ESCAPE: // escape char
@@ -359,7 +359,7 @@ func main() {
 								// clear input buffer
 							case 81: // F2 - toggle return mode
 								if returnMode == NULL {
-									returnMode = RAW
+									returnMode = RTN
 								} else {
 									returnMode = NULL
 								}
@@ -395,7 +395,7 @@ func main() {
 									fmt.Println("F9")
 									printPrompt()
 								case 49: // F10
-									fmt.Println("\n*** Resetting Z64 ***\n")
+									fmt.Println("\n*** Resetting Z64 ***")
 									resetZolatron(reset)
 								} // switch ichar[3]
 							case 65: // up
