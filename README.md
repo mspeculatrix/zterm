@@ -33,8 +33,10 @@ There are several local commands that are handled by Zterm (and not sent to the 
 /f  Show log filename
 /g  Toggle logging
 /h  Show this list of commands
+/m  Set test message
 /r  Reset the Zolatron
 /s  Show settings
+/t  Send test message
 /q  Quit Zterm
 /w  Switch to RAW mode
 ```
@@ -55,10 +57,20 @@ If you're using RTN mode, you can send a Null character (to indicate end of tran
 ### RAW Mode - Function Keys
 
 ```
-<esc>/F1  switch to CMD mode
-F2        toggle NULL/RAW mode for <return> key
-F3        show status
-F4        send NULL
-F8        reset Z64
-F10       quit
+<esc>   switch to CMD mode
+F1      show status
+F2      toggle NULL/RAW mode for <return> key
+F3      send test message
+F4      send NULL
+F5      set test message
+F8      reset the Zolatron
+F10     quit
 ```
+
+## Logging
+
+The program starts logging to the default log file automatically. You can't currently turn off this behaviour, but you can toggle logging on/off during a session.
+
+## Test message
+
+You can send a predetermined test message using /t in CMD mode or F3 in RAW mode. Sometimes, such as when you're testing a serial connection, you just want to send a bunch of words or characters, and this helps you do that without constant retyping. The default message is 'This is a test.' You can set a different message by using /m in CMD mode or F5 in RAW mode. The message is automatically followed by a Null character.

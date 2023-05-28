@@ -37,7 +37,7 @@ import (
 )
 
 const (
-	version             = "1.0.0"
+	version             = "1.0.1"
 	cmdChar             = "/"  // prefix for local commands
 	recvBufSize         = 1024 // recieve buffer size, in bytes
 	charDelay           = 10   // ms between characters
@@ -48,10 +48,6 @@ const (
 	CR             byte = 13
 	ESCAPE         byte = 27
 	defaultLogFile      = "zterm.log"
-	sendModeLine        = "line"
-	sendModeChar        = "char"
-	inputModeText       = 0
-	inputModeCmd        = 1
 )
 
 var (
@@ -107,18 +103,21 @@ func localCommand(cmd string, serialPort serial.Port) (bool, bool) {
 		fmt.Println("Logging: " + logState)
 		printPrompt()
 	case "h", "H":
-		fmt.Printf("%sf  show log filename       %sr  reset Z64\n", cmdChar, cmdChar)
-		fmt.Printf("%sg  start/stop logging      %ss  show settings\n", cmdChar, cmdChar)
-		fmt.Printf("%sh  this help text          %sw  raw mode\n", cmdChar, cmdChar)
+		fmt.Printf("%sf  show log filename       %sg  start/stop logging\n", cmdChar, cmdChar)
+		fmt.Printf("%sh  this help text          %sm  set test message\n", cmdChar, cmdChar)
+		fmt.Printf("%sr  reset Zolatron          %ss  show settings\n", cmdChar, cmdChar)
+		fmt.Printf("%st  send test message       %sw  raw mode\n", cmdChar, cmdChar)
 		fmt.Printf("%sq  quit\n", cmdChar)
 		printPrompt()
+	case "m", "M":
+		setTestMsg()
+		printPrompt()
 	case "r", "R":
-		fmt.Println("Resetting Z64...")
 		resetZolatron(reset)
 	case "s", "S": // show settings
 		showStatus()
-	case "t", "T":
-		// send test message
+	case "t", "T": // send test message
+		fmt.Println(testMsg)
 		sendText([]byte(testMsg), serialPort)
 	case "q", "Q":
 		loop = false
@@ -190,6 +189,7 @@ func receiveText(serialPort serial.Port, msgs <-chan bool, logS bool) {
 func resetZolatron(rPin rpio.Pin) {
 	// Pull the reset line low. As we are using a MOSFET to control the line,
 	// this means setting the control line (rPin) high.
+	fmt.Println("\n*** Resetting Zolatron ***")
 	rPin.Write(rpio.High)
 	time.Sleep(time.Second)
 	rPin.Write(rpio.Low)
@@ -203,11 +203,21 @@ func returnModeStr() (modeStr string) {
 	return modeStr
 }
 
+func setTestMsg() {
+	reader := bufio.NewReader(os.Stdin)
+	fmt.Print("\nNew test message: ")
+	input, _ := reader.ReadString('\n')
+	testMsg = strings.TrimSuffix(input, "\n")
+	fmt.Println("New message is:", testMsg)
+	//printPrompt()
+}
+
 func showFkeys() {
 	fmt.Println("<esc> switch to CMD mode")
-	fmt.Println("F1    switch to CMD mode     F2     toggle NULL/RTN mode for <return>")
-	fmt.Println("F3    show status            F4     send NULL")
-	fmt.Println("F8    reset Z64              F10    quit")
+	fmt.Println("F1    show status            F2    toggle NULL/RTN mode for <return>")
+	fmt.Println("F3    send test message      F4    send NULL")
+	fmt.Println("F5    set test message       F8    reset Zolatron")
+	fmt.Println("F10   quit")
 }
 
 func showReturnMode() {
@@ -218,6 +228,7 @@ func showStatus() {
 	fmt.Printf("Version   : %-15s  Log file    : %s\n", version, logFile)
 	fmt.Printf("Port      : %-15s  Input mode  : %s\n", comPort, strings.ToUpper(imode))
 	fmt.Printf("Baud rate : %-15d  Return mode : %s\n", baudRate, returnModeStr())
+	fmt.Println("Test msg  :", testMsg)
 	if imode == "raw" {
 		fmt.Println("Function keys:")
 		showFkeys()
@@ -352,12 +363,9 @@ func main() {
 							printPrompt()
 						case 79: // F-keys - f1-f4
 							switch ichar[2] {
-							case 80: // F1 - switch input mode
-								imode = "cmd"
-								inputloop = false
-								fmt.Println("\n-- Switched to CMD mode --")
-								printPrompt()
-								// clear input buffer
+							case 80: // F1 - show status
+								fmt.Println("")
+								showStatus()
 							case 81: // F2 - toggle return mode
 								if returnMode == NULL {
 									returnMode = RTN
@@ -366,9 +374,10 @@ func main() {
 								}
 								showReturnMode()
 								printPrompt()
-							case 82: // F3 - show status
-								fmt.Println("")
-								showStatus()
+							case 82: // F3 - send test message
+								fmt.Println(testMsg)
+								serialPort.Write([]byte(testMsg))
+								serialPort.Write([]byte{NULL})
 							case 83: // F4 - send a NULL byte
 								serialPort.Write([]byte{NULL})
 								fmt.Println("")
@@ -378,7 +387,7 @@ func main() {
 							case 49: // F5-F8
 								switch ichar[3] {
 								case 53: // F5
-									fmt.Println("F5")
+									setTestMsg()
 									printPrompt()
 								case 55: // F6
 									fmt.Println("F6")
@@ -387,7 +396,6 @@ func main() {
 									fmt.Println("F7")
 									printPrompt()
 								case 57: // F8
-									fmt.Println("\n*** Resetting Z64 ***")
 									resetZolatron(reset)
 								}
 							case 50: // F9 & F10
