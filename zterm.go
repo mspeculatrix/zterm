@@ -37,7 +37,7 @@ import (
 )
 
 const (
-	version             = "0.2.0"
+	version             = "1.0.0"
 	cmdChar             = "/"  // prefix for local commands
 	recvBufSize         = 1024 // recieve buffer size, in bytes
 	charDelay           = 10   // ms between characters
@@ -47,7 +47,7 @@ const (
 	NEWLINE        byte = 10
 	CR             byte = 13
 	ESCAPE         byte = 27
-	defaultLogFile      = "zolaterm.log"
+	defaultLogFile      = "zterm.log"
 	sendModeLine        = "line"
 	sendModeChar        = "char"
 	inputModeText       = 0
@@ -204,11 +204,10 @@ func returnModeStr() (modeStr string) {
 }
 
 func showFkeys() {
-	fmt.Println("   - F1  switch to CMD mode")
-	fmt.Println("   - F2  toggle NULL/RTN mode for <return> key")
-	fmt.Println("   - F3  show status")
-	fmt.Println("   - F4  send NULL")
-	fmt.Println("   - F10 reset Z64")
+	fmt.Println("<esc> switch to CMD mode")
+	fmt.Println("F1    switch to CMD mode     F2     toggle NULL/RTN mode for <return>")
+	fmt.Println("F3    show status            F4     send NULL")
+	fmt.Println("F8    reset Z64              F10    quit")
 }
 
 func showReturnMode() {
@@ -347,7 +346,9 @@ func main() {
 					case ESCAPE: // escape char
 						switch ichar[1] {
 						case 0: // ESCAPE key
-							fmt.Println("<esc>")
+							imode = "cmd"
+							inputloop = false
+							fmt.Println("\n-- Switched to CMD mode --")
 							printPrompt()
 						case 79: // F-keys - f1-f4
 							switch ichar[2] {
@@ -386,8 +387,8 @@ func main() {
 									fmt.Println("F7")
 									printPrompt()
 								case 57: // F8
-									fmt.Println("F8")
-									printPrompt()
+									fmt.Println("\n*** Resetting Z64 ***")
+									resetZolatron(reset)
 								}
 							case 50: // F9 & F10
 								switch ichar[3] {
@@ -395,8 +396,8 @@ func main() {
 									fmt.Println("F9")
 									printPrompt()
 								case 49: // F10
-									fmt.Println("\n*** Resetting Z64 ***")
-									resetZolatron(reset)
+									inputloop = false
+									mainloop = false
 								} // switch ichar[3]
 							case 65: // up
 								fmt.Println("up")
