@@ -44,8 +44,10 @@ const (
 	NULL           byte = 0    // NULL mode for return key
 	RTN            byte = 1    // Indicates RTN mode for return key
 	LINETERM       byte = 10   // ASCII char to use as line terminator
-	NEWLINE        byte = 10
-	CR             byte = 13
+	NEWLINE        byte = 10   // Linefeed
+	BS             byte = 8    // Backspace
+	DEL            byte = 127  // Delete
+	CR             byte = 13   // Carriage return
 	ESCAPE         byte = 27
 	defaultLogFile      = "zterm.log"
 )
@@ -56,7 +58,7 @@ var (
 	logFile    = defaultLogFile
 	fileMode   = os.O_CREATE | os.O_TRUNC | os.O_WRONLY
 	append     = false
-	imode      = "cmd" // or "raw" - input mode
+	imode      = "raw" // or "cmd" - input mode
 	returnMode = NULL  // or RTN - how <return> key is treated
 	// recvMsgs    = make(chan []byte, recvBufSize)
 	// logtexts    = make(chan []byte, recvBufSize)
@@ -301,11 +303,14 @@ func main() {
 	logger.Println("Zolaterm session:", dt.Format("2006/01/02 15:04:05"))
 
 	fmt.Printf("\n\nZolaTerm %-10s\n", version)
-	fmt.Printf("%s\n", strings.Repeat("-", 60))
-	fmt.Printf("Console port : /dev/%-15s   Input mode: %-15s\n", comPort, strings.ToUpper(imode))
-	fmt.Printf("Log filename : %-20s   Logging is: %-15s \n", logFile, logState)
-	fmt.Printf("Local cmd key: %s  -  Type %sh for help, %sw for RAW mode\n", cmdChar, cmdChar, cmdChar)
+	fmt.Printf("%s\n", strings.Repeat("-", 68))
+	fmt.Printf("Console port : /dev/%-19s Input mode: %-15s\n", comPort, strings.ToUpper(imode))
+	fmt.Printf("Log filename : %-24s Logging is: %-15s \n", logFile, logState)
+	fmt.Printf("Local cmd key: %-24s %sh for help, %sw for RAW mode\n", cmdChar, cmdChar, cmdChar)
 	fmt.Println("")
+
+	showFkeys()
+	showReturnMode()
 
 	// start Go routines
 	go receiveText(serialPort, recvMsgs, logSession)
@@ -337,6 +342,10 @@ func main() {
 					fmt.Println("Say again?", err)
 				} else {
 					switch ichar[0] {
+					case BS, DEL: // Backspace or Delete
+						// we'll always send BS
+						fmt.Printf("\b \b")
+						serialPort.Write([]byte{BS})
 					case CR: // Carriage return
 						// If RTN mode, just send what was actually typed.
 						// Otherwise, send a NULL character.
@@ -407,6 +416,12 @@ func main() {
 									inputloop = false
 									mainloop = false
 								} // switch ichar[3]
+							case 53: // page up
+								fmt.Println("pgup")
+								printPrompt()
+							case 54: // page down
+								fmt.Println("pgdn")
+								printPrompt()
 							case 65: // up
 								fmt.Println("up")
 								printPrompt()
@@ -418,6 +433,12 @@ func main() {
 								printPrompt()
 							case 68: // left
 								fmt.Println("lt")
+								printPrompt()
+							case 70: // end
+								fmt.Println("end")
+								printPrompt()
+							case 72:  // home
+								fmt.Println("home")
 								printPrompt()
 							default:
 								fmt.Println(ichar)
@@ -433,8 +454,7 @@ func main() {
 					} // switch ichar[0]
 				} // no error
 			}
-
-		} else if imode == "cmd" {
+		} else {
 			/*******************************************************************
 			*****  CMD INPUT MODE                                          *****
 			*******************************************************************/
