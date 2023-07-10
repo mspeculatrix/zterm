@@ -27,6 +27,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"math"
 	"os"
 	"strings"
 	"time"
@@ -43,9 +44,10 @@ const (
 	charDelay           = 10   // ms between characters
 	NULL           byte = 0    // NULL mode for return key
 	RTN            byte = 1    // Indicates RTN mode for return key
+	BS             byte = 8    // Backspace
+	TAB            byte = 9    // Tab
 	LINETERM       byte = 10   // ASCII char to use as line terminator
 	NEWLINE        byte = 10   // Linefeed
-	BS             byte = 8    // Backspace
 	DEL            byte = 127  // Delete
 	CR             byte = 13   // Carriage return
 	ESCAPE         byte = 27
@@ -68,12 +70,19 @@ var (
 	logtexts   = make(chan string)
 	// ASCII codes of characters to ignore when sending
 	//ignoreChars = []byte{NEWLINE, CR}
-	testMsg = "This is a test."
-	reset   = rpio.Pin(21)
+	testMsg            = "This is a test."
+	reset              = rpio.Pin(21)
+	convertToUpper     = 1 // convert alpha chars to uppercase in raw mode?
+	toggleStates       = []string{"OFF", "ON"}
+	showKeyCodes   int = 0
 )
 
 func printPrompt() {
-	fmt.Print("Z>")
+	if convertToUpper == 1 {
+		fmt.Print("Z>")
+	} else {
+		fmt.Print("z>")
+	}
 }
 
 // func isCharToIgnore(chr byte) bool {
@@ -218,19 +227,28 @@ func showFkeys() {
 	fmt.Println("<esc> switch to CMD mode")
 	fmt.Println("F1    show status            F2    toggle NULL/RTN mode for <return>")
 	fmt.Println("F3    send test message      F4    send NULL")
-	fmt.Println("F5    set test message       F8    reset Zolatron")
-	fmt.Println("F10   quit")
+	fmt.Println("F5    set test message       F6    toggle keycodes")
+	fmt.Println("                             F8    reset Zolatron")
+	fmt.Println("F9    toggle uppercase       F10   quit")
 }
 
 func showReturnMode() {
 	fmt.Println("\n-- Using", returnModeStr(), "mode for <return> key --")
 }
 
+func showUpperMode() {
+	fmt.Println("\n-- Conversion to UPPERCASE is", toggleStates[convertToUpper], " --")
+}
+
+func showKeycodesMode() {
+	fmt.Println("\n-- Show keycodes is", toggleStates[showKeyCodes], " --")
+}
+
 func showStatus() {
 	fmt.Printf("Version   : %-15s  Log file    : %s\n", version, logFile)
 	fmt.Printf("Port      : %-15s  Input mode  : %s\n", comPort, strings.ToUpper(imode))
 	fmt.Printf("Baud rate : %-15d  Return mode : %s\n", baudRate, returnModeStr())
-	fmt.Println("Test msg  :", testMsg)
+	fmt.Printf("Uppercase : %-15s  Test msg    : %s\n", toggleStates[convertToUpper], testMsg)
 	if imode == "raw" {
 		fmt.Println("Function keys:")
 		showFkeys()
@@ -311,6 +329,8 @@ func main() {
 
 	showFkeys()
 	showReturnMode()
+	showUpperMode()
+	showKeycodesMode()
 
 	// start Go routines
 	go receiveText(serialPort, recvMsgs, logSession)
@@ -337,10 +357,17 @@ func main() {
 				oldState, _ := term.MakeRaw(int(os.Stdin.Fd()))
 				_, err := os.Stdin.Read(ichar)
 				term.Restore(int(os.Stdin.Fd()), oldState)
-				// fmt.Println(ichar)
+				if showKeyCodes == 1 {
+					fmt.Print(ichar)
+				}
 				if err != nil {
 					fmt.Println("Say again?", err)
 				} else {
+					/* ***** PROCESS INPUT ***** */
+					// NB: Values of 1-26 for ichar[0] represent Ctrl-A..Ctrl-Z.
+					// We're already testing for Ctrl-H (Backspace, ASCII 8)
+					// and Ctrl-G (ASCII 7) is the bell, which is
+					// probably best avoided. But the others are all available.
 					switch ichar[0] {
 					case BS, DEL: // Backspace or Delete
 						// we'll always send BS
@@ -363,6 +390,9 @@ func main() {
 						if returnMode == RTN {
 							serialPort.Write([]byte{ichar[0]})
 						}
+					case TAB: // Tab
+						fmt.Print("<tab>")
+						serialPort.Write([]byte{ichar[0]})
 					case ESCAPE: // escape char
 						switch ichar[1] {
 						case 0: // ESCAPE key
@@ -399,7 +429,8 @@ func main() {
 									setTestMsg()
 									printPrompt()
 								case 55: // F6
-									fmt.Println("F6")
+									showKeyCodes = int(math.Abs(float64(showKeyCodes) - 1))
+									fmt.Println("Keycodes", toggleStates[showKeyCodes])
 									printPrompt()
 								case 56: // F7
 									fmt.Println("F7")
@@ -410,7 +441,8 @@ func main() {
 							case 50: // F9 & F10
 								switch ichar[3] {
 								case 48: // F9
-									fmt.Println("F9")
+									convertToUpper = int(math.Abs(float64(convertToUpper) - 1))
+									showUpperMode()
 									printPrompt()
 								case 49: // F10
 									inputloop = false
@@ -437,7 +469,7 @@ func main() {
 							case 70: // end
 								fmt.Println("end")
 								printPrompt()
-							case 72:  // home
+							case 72: // home
 								fmt.Println("home")
 								printPrompt()
 							default:
@@ -449,6 +481,9 @@ func main() {
 							printPrompt()
 						} // switch ichar[1]
 					default:
+						if (ichar[0] > 96 && ichar[0] < 123) && convertToUpper == 1 {
+							ichar[0] = ichar[0] - 32
+						}
 						fmt.Print(string(ichar[0]))
 						serialPort.Write([]byte{ichar[0]})
 					} // switch ichar[0]
@@ -484,6 +519,6 @@ func main() {
 		}
 	} // mainloop
 
-	fmt.Println("Bye!")
+	fmt.Println("\nBye!")
 
 }

@@ -54,6 +54,10 @@ You can toggle between these two modes using F2.
 
 If you're using RTN mode, you can send a Null character (to indicate end of transmission) by pressing F4.
 
+By default, RAW mode is set to convert alpha characters to uppercase. You can toggle this off/on with F9.
+
+To see the codes of the characters entered, you can use F6.
+
 ### RAW Mode - Function Keys
 
 ```
@@ -63,7 +67,9 @@ F2      toggle NULL/RAW mode for <return> key
 F3      send test message
 F4      send NULL
 F5      set test message
+F6		toggle display of character codes (default OFF)
 F8      reset the Zolatron
+F9      toggle conversion to uppercase (default is ON)
 F10     quit
 ```
 
@@ -74,3 +80,8 @@ The program starts logging to the default log file automatically. You can't curr
 ## Test message
 
 You can send a predetermined test message using /t in CMD mode or F3 in RAW mode. Sometimes, such as when you're testing a serial connection, you just want to send a bunch of words or characters, and this helps you do that without constant retyping. The default message is 'This is a test.' You can set a different message by using /m in CMD mode or F5 in RAW mode. The message is automatically followed by a Null character.
+
+## Branches
+
+`main` branch is a version I consider reasonably stables and usable.
+`dev` branch is where new, possibly buggy features are added.
